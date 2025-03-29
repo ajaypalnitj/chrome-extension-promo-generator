@@ -261,8 +261,6 @@ function App() {
                 files={files}
                 extensionName={extensionName}
                 tagline={tagline}
-                styles={stylePreferences}
-                onStyleChange={handleStyleChange}
               />
             </ContentGrid>
           </div>

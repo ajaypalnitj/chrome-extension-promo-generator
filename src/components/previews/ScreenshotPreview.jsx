@@ -13,9 +13,6 @@ const PreviewWrapper = styled.div`
   transform-origin: top left;
   transform: scale(0.4);
   margin-bottom: -480px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   
   @media (max-width: 768px) {
     transform: scale(0.25);
@@ -23,16 +20,15 @@ const PreviewWrapper = styled.div`
   }
 `;
 
-const BackgroundImage = styled.div`
+const ScreenshotImage = styled.img`
   width: 100%;
   height: 100%;
-  background-image: ${props => props.$screenshot ? `url(${props.$screenshot})` : 'none'};
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
+  object-fit: fill;
+  object-position: center;
+  display: block;
 `;
 
-const ScreenshotPreview = forwardRef(({ screenshot, extensionName }, ref) => {
+const ScreenshotPreview = forwardRef(({ screenshot }, ref) => {
   const [screenshotUrl, setScreenshotUrl] = useState(null);
   
   // Load screenshot data URL
@@ -43,25 +39,40 @@ const ScreenshotPreview = forwardRef(({ screenshot, extensionName }, ref) => {
       if (!screenshot) return;
       
       try {
-        const dataUrl = await fileToDataUrl(screenshot);
-        if (mounted) {
-          setScreenshotUrl(dataUrl);
+        if (typeof screenshot === 'string') {
+          setScreenshotUrl(screenshot);
+        } else {
+          const objectUrl = URL.createObjectURL(screenshot);
+          if (mounted) {
+            setScreenshotUrl(objectUrl);
+          }
+          
+          return () => {
+            URL.revokeObjectURL(objectUrl);
+          };
         }
       } catch (error) {
         console.error('Error loading screenshot:', error);
       }
     };
     
-    loadScreenshot();
+    const cleanup = loadScreenshot();
     
     return () => {
       mounted = false;
+      if (cleanup) cleanup();
     };
   }, [screenshot]);
 
   return (
     <PreviewWrapper ref={ref}>
-      <BackgroundImage $screenshot={screenshotUrl} />
+      {screenshotUrl ? (
+        <ScreenshotImage src={screenshotUrl} alt="Screenshot preview" />
+      ) : (
+        <div style={{ width: '100%', height: '100%', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#777' }}>
+          No screenshot loaded
+        </div>
+      )}
     </PreviewWrapper>
   );
 });

@@ -1,11 +1,10 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
 import ScreenshotPreview from './previews/ScreenshotPreview';
 import SmallTilePreview from './previews/SmallTilePreview';
 import MarqueePreview from './previews/MarqueePreview';
-import StyleSelector from './StyleSelector';
 
 const Section = styled.section`
   background-color: ${props => props.theme.backgroundAlt};
@@ -82,6 +81,34 @@ const MultipleScreenshotsContainer = styled.div`
   gap: 3rem;
 `;
 
+const StylePreviewsContainer = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const StylePreviewWrapper = styled.div`
+  position: relative;
+`;
+
+const StyleLabel = styled.div`
+  position: absolute;
+  top: -25px;
+  left: 0;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 500;
+`;
+
 const LoadingIndicator = styled.div`
   position: absolute;
   top: 0;
@@ -110,14 +137,6 @@ const LoadingIndicator = styled.div`
   }
 `;
 
-const StatusMessage = styled.div`
-  padding: 0.5rem;
-  text-align: center;
-  font-size: 0.9rem;
-  color: ${props => props.$isError ? 'var(--error-color)' : 'var(--success-color)'};
-  margin-top: 0.5rem;
-`;
-
 // Fallback method for image generation
 const createFallbackImage = (width, height, type) => {
   const canvas = document.createElement('canvas');
@@ -144,23 +163,26 @@ const createFallbackImage = (width, height, type) => {
   return canvas.toDataURL('image/png');
 };
 
-function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }) {
+function PreviewSection({ files, extensionName, tagline }) {
   const [previewUrls, setPreviewUrls] = useState({
     screenshots: {},
-    smallTile: null,
-    marqueeTile: null
+    smallTile: {},
+    marqueeTile: {}
   });
   
   const [loadingStatus, setLoadingStatus] = useState({
     screenshots: {},
-    smallTile: false,
-    marqueeTile: false
+    smallTile: {},
+    marqueeTile: {}
   });
+  
+  // Style variations
+  const styles = useMemo(() => ['minimal', 'dark', 'colorful'], []);
   
   // Refs for all preview components
   const screenshotRefs = useRef({});
-  const smallTileRef = useRef(null);
-  const marqueeTileRef = useRef(null);
+  const smallTileRefs = useRef({});
+  const marqueeTileRefs = useRef({});
   
   // Get or create a ref for a screenshot at a specific index
   const getScreenshotRef = (index) => {
@@ -170,18 +192,37 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
     return screenshotRefs.current[index];
   };
   
+  // Get or create a ref for a small tile with a specific style
+  const getSmallTileRef = (style) => {
+    if (!smallTileRefs.current[style]) {
+      smallTileRefs.current[style] = React.createRef();
+    }
+    return smallTileRefs.current[style];
+  };
+  
+  // Get or create a ref for a marquee tile with a specific style
+  const getMarqueeTileRef = (style) => {
+    if (!marqueeTileRefs.current[style]) {
+      marqueeTileRefs.current[style] = React.createRef();
+    }
+    return marqueeTileRefs.current[style];
+  };
+  
   // Generate image from a component
-  const generateImage = useCallback(async (ref, type, index = null) => {
+  const generateImage = useCallback(async (ref, type, index = null, style = null) => {
     if (!ref?.current) return null;
     
     // Set loading state
-    if (index !== null) {
+    if (index !== null && type === 'screenshots') {
       setLoadingStatus(prev => ({
         ...prev,
         screenshots: { ...prev.screenshots, [index]: true }
       }));
-    } else {
-      setLoadingStatus(prev => ({ ...prev, [type]: true }));
+    } else if (style !== null) {
+      setLoadingStatus(prev => ({
+        ...prev,
+        [type]: { ...prev[type], [style]: true }
+      }));
     }
     
     try {
@@ -192,13 +233,16 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
       });
       
       // Store the result
-      if (index !== null) {
+      if (index !== null && type === 'screenshots') {
         setPreviewUrls(prev => ({
           ...prev,
           screenshots: { ...prev.screenshots, [index]: dataUrl }
         }));
-      } else {
-        setPreviewUrls(prev => ({ ...prev, [type]: dataUrl }));
+      } else if (style !== null) {
+        setPreviewUrls(prev => ({
+          ...prev,
+          [type]: { ...prev[type], [style]: dataUrl }
+        }));
       }
       
       return dataUrl;
@@ -216,25 +260,31 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
       }
       
       // Store the fallback result
-      if (index !== null) {
+      if (index !== null && type === 'screenshots') {
         setPreviewUrls(prev => ({
           ...prev,
           screenshots: { ...prev.screenshots, [index]: fallbackUrl }
         }));
-      } else {
-        setPreviewUrls(prev => ({ ...prev, [type]: fallbackUrl }));
+      } else if (style !== null) {
+        setPreviewUrls(prev => ({
+          ...prev,
+          [type]: { ...prev[type], [style]: fallbackUrl }
+        }));
       }
       
       return fallbackUrl;
     } finally {
       // Clear loading state
-      if (index !== null) {
+      if (index !== null && type === 'screenshots') {
         setLoadingStatus(prev => ({
           ...prev,
           screenshots: { ...prev.screenshots, [index]: false }
         }));
-      } else {
-        setLoadingStatus(prev => ({ ...prev, [type]: false }));
+      } else if (style !== null) {
+        setLoadingStatus(prev => ({
+          ...prev,
+          [type]: { ...prev[type], [style]: false }
+        }));
       }
     }
   }, []);
@@ -247,20 +297,30 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
       
       const ref = getScreenshotRef(index);
       if (ref && ref.current) {
-        generateImage(ref, 'screenshot', index);
+        generateImage(ref, 'screenshots', index);
       }
     });
     
-    // Generate small tile if icon exists
-    if (files.icon && smallTileRef.current) {
-      generateImage(smallTileRef, 'smallTile');
+    // Generate small tiles for all styles
+    if (files.icon) {
+      styles.forEach(style => {
+        const ref = getSmallTileRef(style);
+        if (ref && ref.current) {
+          generateImage(ref, 'smallTile', null, style);
+        }
+      });
     }
     
-    // Generate marquee tile if icon exists
-    if (files.icon && marqueeTileRef.current) {
-      generateImage(marqueeTileRef, 'marqueeTile');
+    // Generate marquee tiles for all styles
+    if (files.icon) {
+      styles.forEach(style => {
+        const ref = getMarqueeTileRef(style);
+        if (ref && ref.current) {
+          generateImage(ref, 'marqueeTile', null, style);
+        }
+      });
     }
-  }, [files, generateImage, getScreenshotRef]);
+  }, [files, generateImage, getScreenshotRef, getSmallTileRef, getMarqueeTileRef, styles]);
   
   // Download a generated image
   const handleDownload = useCallback((dataUrl, filename) => {
@@ -284,9 +344,8 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
   
   // Download all generated images
   const downloadAll = useCallback(async () => {
-    const screenshotKeys = Object.keys(previewUrls.screenshots);
-    
     // Download each screenshot
+    const screenshotKeys = Object.keys(previewUrls.screenshots);
     for (const index of screenshotKeys) {
       const dataUrl = previewUrls.screenshots[index];
       if (dataUrl) {
@@ -295,17 +354,24 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
       }
     }
     
-    // Download small tile
-    if (previewUrls.smallTile) {
-      handleDownload(previewUrls.smallTile, 'small_promo_440x280.png');
-      await new Promise(resolve => setTimeout(resolve, 300));
+    // Download small tiles
+    for (const style of styles) {
+      const dataUrl = previewUrls.smallTile[style];
+      if (dataUrl) {
+        handleDownload(dataUrl, `small_promo_${style}_440x280.png`);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
     }
     
-    // Download marquee tile
-    if (previewUrls.marqueeTile) {
-      handleDownload(previewUrls.marqueeTile, 'marquee_promo_1400x560.png');
+    // Download marquee tiles
+    for (const style of styles) {
+      const dataUrl = previewUrls.marqueeTile[style];
+      if (dataUrl) {
+        handleDownload(dataUrl, `marquee_promo_${style}_1400x560.png`);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
     }
-  }, [previewUrls, handleDownload]);
+  }, [previewUrls, handleDownload, styles]);
 
   return (
     <Section className="preview-section">
@@ -324,7 +390,11 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
           </button>
           <button 
             onClick={() => downloadAll()}
-            disabled={!previewUrls.smallTile && !previewUrls.marqueeTile && Object.keys(previewUrls.screenshots).length === 0}
+            disabled={
+              Object.keys(previewUrls.screenshots).length === 0 &&
+              Object.keys(previewUrls.smallTile).length === 0 &&
+              Object.keys(previewUrls.marqueeTile).length === 0
+            }
           >
             Download All
           </button>
@@ -362,10 +432,8 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
                 <div style={{ position: 'relative' }}>
                   <ScreenshotPreview 
                     ref={getScreenshotRef(index)}
-                    icon={files.icon} 
                     screenshot={screenshot}
                     extensionName={extensionName}
-                    tagline={tagline}
                   />
                   {loadingStatus.screenshots[index] && <LoadingIndicator />}
                 </div>
@@ -374,71 +442,85 @@ function PreviewSection({ files, extensionName, tagline, styles, onStyleChange }
           </MultipleScreenshotsContainer>
         </PreviewContainer>
         
-        {/* Small Tile Preview */}
+        {/* Small Tile Previews */}
         <PreviewContainer>
           <PreviewHeader>
             <div>
               <PreviewTitle>Small Promo Tile (440 x 280)</PreviewTitle>
               <PreviewInfo>Optional but recommended for better visibility</PreviewInfo>
             </div>
-            <button 
-              onClick={() => handleDownload(previewUrls.smallTile, 'small_promo_440x280.png')}
-              disabled={!previewUrls.smallTile || loadingStatus.smallTile}
-            >
-              {loadingStatus.smallTile ? 'Generating...' : 'Download'}
-            </button>
           </PreviewHeader>
           
-          <StyleSelector 
-            type="tile" 
-            selectedStyle={styles.smallTile} 
-            onChange={(styleId) => onStyleChange('smallTile', styleId)} 
-          />
-          
-          <div style={{ position: 'relative' }}>
-            <SmallTilePreview 
-              ref={smallTileRef}
-              icon={files.icon} 
-              extensionName={extensionName}
-              tagline={tagline}
-              style={styles.smallTile}
-            />
-            {loadingStatus.smallTile && <LoadingIndicator />}
-          </div>
+          <StylePreviewsContainer>
+            {styles.map(style => (
+              <StylePreviewWrapper key={`small-tile-${style}`}>
+                <StyleLabel>{style.charAt(0).toUpperCase() + style.slice(1)}</StyleLabel>
+                <div style={{ position: 'relative' }}>
+                  <SmallTilePreview 
+                    ref={getSmallTileRef(style)}
+                    icon={files.icon} 
+                    extensionName={extensionName}
+                    tagline={tagline}
+                    style={style}
+                  />
+                  {loadingStatus.smallTile[style] && <LoadingIndicator />}
+                </div>
+                <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                  <button 
+                    onClick={() => handleDownload(
+                      previewUrls.smallTile[style], 
+                      `small_promo_${style}_440x280.png`
+                    )}
+                    disabled={!previewUrls.smallTile[style] || loadingStatus.smallTile[style]}
+                    style={{ width: '100%' }}
+                  >
+                    {loadingStatus.smallTile[style] ? 'Generating...' : 'Download'}
+                  </button>
+                </div>
+              </StylePreviewWrapper>
+            ))}
+          </StylePreviewsContainer>
         </PreviewContainer>
         
-        {/* Marquee Preview */}
+        {/* Marquee Previews */}
         <PreviewContainer>
           <PreviewHeader>
             <div>
               <PreviewTitle>Marquee Promo Tile (1400 x 560)</PreviewTitle>
               <PreviewInfo>Optional but recommended for featured extensions</PreviewInfo>
             </div>
-            <button 
-              onClick={() => handleDownload(previewUrls.marqueeTile, 'marquee_promo_1400x560.png')}
-              disabled={!previewUrls.marqueeTile || loadingStatus.marqueeTile}
-            >
-              {loadingStatus.marqueeTile ? 'Generating...' : 'Download'}
-            </button>
           </PreviewHeader>
           
-          <StyleSelector 
-            type="marquee" 
-            selectedStyle={styles.marqueeTile} 
-            onChange={(styleId) => onStyleChange('marqueeTile', styleId)} 
-          />
-          
-          <div style={{ position: 'relative' }}>
-            <MarqueePreview 
-              ref={marqueeTileRef}
-              icon={files.icon} 
-              screenshots={files.screenshots.slice(0, 2)}
-              extensionName={extensionName}
-              tagline={tagline}
-              style={styles.marqueeTile}
-            />
-            {loadingStatus.marqueeTile && <LoadingIndicator />}
-          </div>
+          <StylePreviewsContainer>
+            {styles.map(style => (
+              <StylePreviewWrapper key={`marquee-tile-${style}`} style={{ marginBottom: '40px' }}>
+                <StyleLabel>{style.charAt(0).toUpperCase() + style.slice(1)}</StyleLabel>
+                <div style={{ position: 'relative' }}>
+                  <MarqueePreview 
+                    ref={getMarqueeTileRef(style)}
+                    icon={files.icon} 
+                    screenshots={files.screenshots.slice(0, 2)}
+                    extensionName={extensionName}
+                    tagline={tagline}
+                    style={style}
+                  />
+                  {loadingStatus.marqueeTile[style] && <LoadingIndicator />}
+                </div>
+                <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                  <button 
+                    onClick={() => handleDownload(
+                      previewUrls.marqueeTile[style], 
+                      `marquee_promo_${style}_1400x560.png`
+                    )}
+                    disabled={!previewUrls.marqueeTile[style] || loadingStatus.marqueeTile[style]}
+                    style={{ width: '100%' }}
+                  >
+                    {loadingStatus.marqueeTile[style] ? 'Generating...' : 'Download'}
+                  </button>
+                </div>
+              </StylePreviewWrapper>
+            ))}
+          </StylePreviewsContainer>
         </PreviewContainer>
       </PreviewsGrid>
     </Section>

@@ -4,50 +4,86 @@ import { fileToDataUrl } from '../../utils/helpers';
 
 // Style configuration
 const STYLES = {
-  'gradient-blue': {
+  'minimal': {
+    background: '#ffffff',
+    color: '#333333',
+    border: '1px solid #e0e0e0',
+    shadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    cardBackground: '#ffffff'
+  },
+  'dark': {
+    background: '#1e1e2e',
+    color: '#ffffff',
+    border: '1px solid #2d2d3a',
+    shadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+    cardBackground: '#2d2d3a'
+  },
+  'colorful': {
     background: 'linear-gradient(135deg, #4285f4, #34a853)',
-    color: 'white'
-  },
-  'gradient-purple': {
-    background: 'linear-gradient(135deg, #673ab7, #e91e63)',
-    color: 'white'
-  },
-  'gradient-orange': {
-    background: 'linear-gradient(135deg, #ff5722, #ff9800)',
-    color: 'white'
+    color: 'white',
+    border: 'none',
+    shadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+    cardBackground: 'rgba(255, 255, 255, 0.9)'
   }
 };
 
 const PreviewWrapper = styled.div`
   width: 1400px;
   height: 560px;
-  background: ${props => props.$background || 'linear-gradient(135deg, #4285f4, #34a853)'};
+  background: ${props => props.$background || 'white'};
+  color: ${props => props.$color || '#333'};
   position: relative;
   overflow: hidden;
-  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: ${props => props.$shadow || '0 5px 10px rgba(0, 0, 0, 0.1)'};
   border-radius: 10px;
-  color: ${props => props.$color || 'white'};
+  border: ${props => props.$border || 'none'};
   padding: 40px;
   display: flex;
-  flex-direction: row;
+  transform-origin: top left;
+  transform: scale(0.35);
+  margin-bottom: -364px;
   
   @media (max-width: 768px) {
-    transform: scale(0.5);
-    transform-origin: top left;
-    margin-bottom: -280px;
+    transform: scale(0.25);
+    margin-bottom: -420px;
   }
 `;
 
-const ContentSection = styled.div`
-  width: 40%;
+const LeftSection = styled.div`
+  width: 35%;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  padding-right: 30px;
+`;
+
+const RightSection = styled.div`
+  width: 65%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+`;
+
+const ScreenshotCard = styled.div`
+  width: ${props => props.$width || '48%'};
+  height: 420px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  background: ${props => props.$cardBackground || 'white'};
+`;
+
+const ScreenshotImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 `;
 
 const ExtensionIcon = styled.div`
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   margin-bottom: 30px;
   background-image: ${props => props.$icon ? `url(${props.$icon})` : 'none'};
   background-size: contain;
@@ -55,13 +91,9 @@ const ExtensionIcon = styled.div`
   background-repeat: no-repeat;
   
   ${props => !props.$icon && `
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(200, 200, 200, 0.3);
     border-radius: 20px;
   `}
-`;
-
-const TextContent = styled.div`
-  max-width: 400px;
 `;
 
 const ExtensionName = styled.h2`
@@ -72,50 +104,16 @@ const ExtensionName = styled.h2`
 `;
 
 const ExtensionTagline = styled.p`
-  margin: 0;
+  margin: 0 0 20px;
   font-size: 20px;
   line-height: 1.5;
   opacity: 0.9;
 `;
 
-const ScreenshotsSection = styled.div`
-  width: 60%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  position: relative;
-`;
-
-const ScreenshotContainer = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  width: 100%;
-`;
-
-const ScreenshotImage = styled.div`
-  width: 320px;
-  height: 480px;
-  background-color: #f5f5f5;
-  background-image: ${props => props.$src ? `url(${props.$src})` : 'none'};
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-  position: absolute;
-  transform: rotate(${props => props.$rotate || '0deg'});
-  top: ${props => props.$top || '0'};
-  right: ${props => props.$right || '0'};
-  z-index: ${props => props.$zIndex || 1};
-`;
-
-const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagline, style = 'gradient-blue' }, ref) => {
+const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagline, style = 'colorful' }, ref) => {
   const [iconUrl, setIconUrl] = useState(null);
   const [screenshotUrls, setScreenshotUrls] = useState([]);
-  const styleConfig = STYLES[style] || STYLES['gradient-blue'];
+  const styleConfig = STYLES[style] || STYLES['colorful'];
   
   // Load icon data URL
   useEffect(() => {
@@ -150,7 +148,10 @@ const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagl
       
       try {
         const urls = await Promise.all(
-          screenshots.slice(0, 3).map(screenshot => fileToDataUrl(screenshot))
+          screenshots.slice(0, 2).map(screenshot => {
+            if (typeof screenshot === 'string') return screenshot;
+            return URL.createObjectURL(screenshot);
+          })
         );
         
         if (mounted) {
@@ -165,6 +166,9 @@ const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagl
     
     return () => {
       mounted = false;
+      screenshotUrls.forEach(url => {
+        if (url && !url.startsWith('data:')) URL.revokeObjectURL(url);
+      });
     };
   }, [screenshots]);
 
@@ -173,55 +177,50 @@ const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagl
       ref={ref}
       $background={styleConfig.background}
       $color={styleConfig.color}
+      $border={styleConfig.border}
+      $shadow={styleConfig.shadow}
     >
-      <ContentSection>
+      <LeftSection>
         <ExtensionIcon $icon={iconUrl} />
-        <TextContent>
-          <ExtensionName>
-            {extensionName || 'Your Extension Name'}
-          </ExtensionName>
-          <ExtensionTagline>
-            {tagline || 'A short description of what your extension does and why users should install it'}
-          </ExtensionTagline>
-        </TextContent>
-      </ContentSection>
+        <ExtensionName>
+          {extensionName || 'Your Extension Name'}
+        </ExtensionName>
+        <ExtensionTagline>
+          {tagline || 'A short description of what your extension does and why users should install it'}
+        </ExtensionTagline>
+      </LeftSection>
       
-      <ScreenshotsSection>
-        <ScreenshotContainer>
-          {screenshotUrls.length > 0 ? (
-            <>
-              {screenshotUrls.length >= 3 && (
-                <ScreenshotImage 
-                  $src={screenshotUrls[2]} 
-                  $rotate="-5deg" 
-                  $right="300px" 
-                  $top="20px"
-                  $zIndex={1}
-                />
-              )}
-              
-              {screenshotUrls.length >= 2 && (
-                <ScreenshotImage 
-                  $src={screenshotUrls[1]} 
-                  $rotate="3deg" 
-                  $right="200px"
-                  $top="10px"
-                  $zIndex={2}
-                />
-              )}
-              
-              <ScreenshotImage 
-                $src={screenshotUrls[0]} 
-                $rotate="0deg"
-                $right="100px"
-                $zIndex={3}
-              />
-            </>
+      <RightSection>
+        {screenshotUrls.length > 0 ? (
+          screenshotUrls.length === 1 ? (
+            <ScreenshotCard $width="90%" $cardBackground={styleConfig.cardBackground}>
+              <ScreenshotImage src={screenshotUrls[0]} alt="Extension screenshot" />
+            </ScreenshotCard>
           ) : (
-            <ScreenshotImage />
-          )}
-        </ScreenshotContainer>
-      </ScreenshotsSection>
+            <>
+              <ScreenshotCard $cardBackground={styleConfig.cardBackground}>
+                <ScreenshotImage src={screenshotUrls[0]} alt="Extension screenshot 1" />
+              </ScreenshotCard>
+              <ScreenshotCard $cardBackground={styleConfig.cardBackground}>
+                <ScreenshotImage src={screenshotUrls[1]} alt="Extension screenshot 2" />
+              </ScreenshotCard>
+            </>
+          )
+        ) : (
+          <ScreenshotCard $width="90%" $cardBackground={styleConfig.cardBackground}>
+            <div style={{ 
+              width: '100%', 
+              height: '100%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              color: styleConfig.color === 'white' ? '#999' : '#666'
+            }}>
+              No screenshots available
+            </div>
+          </ScreenshotCard>
+        )}
+      </RightSection>
     </PreviewWrapper>
   );
 });
