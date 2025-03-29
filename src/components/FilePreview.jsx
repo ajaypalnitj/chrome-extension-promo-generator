@@ -90,50 +90,78 @@ function FilePreview({ file, name, onRemove }) {
     let mounted = true;
     setError(false);
     
-    const loadPreview = async () => {
-      try {
-        // Use fileToDataUrl helper to convert file to data URL
-        const dataUrl = await fileToDataUrl(file);
-        
+    // For faster preview, use URL.createObjectURL
+    if (file.type && file.type.startsWith('image/')) {
+      const objectUrl = URL.createObjectURL(file);
+      setPreview(objectUrl);
+      
+      // Get image dimensions
+      const img = new Image();
+      img.onload = () => {
         if (!mounted) return;
-        
-        setPreview(dataUrl);
-        
-        // Get image dimensions
-        const img = new Image();
-        img.onload = () => {
-          if (!mounted) return;
-          setDimensions({
-            width: img.width,
-            height: img.height
-          });
-        };
-        
-        img.onerror = () => {
-          if (!mounted) return;
-          console.error('Error loading image from data URL');
-          setError(true);
-        };
-        
-        img.src = dataUrl;
-      } catch (err) {
+        setDimensions({
+          width: img.width,
+          height: img.height
+        });
+      };
+      
+      img.onerror = () => {
         if (!mounted) return;
-        console.error('Error creating preview:', err);
+        console.error('Error loading image from URL');
         setError(true);
-      }
-    };
-    
-    loadPreview();
-    
-    // Cleanup function
-    return () => {
-      mounted = false;
-    };
+      };
+      
+      img.src = objectUrl;
+      
+      return () => {
+        mounted = false;
+        URL.revokeObjectURL(objectUrl);
+      };
+    } else {
+      // Fallback to fileToDataUrl for non-image files
+      const loadPreview = async () => {
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          
+          if (!mounted) return;
+          
+          setPreview(dataUrl);
+          
+          // Get image dimensions
+          const img = new Image();
+          img.onload = () => {
+            if (!mounted) return;
+            setDimensions({
+              width: img.width,
+              height: img.height
+            });
+          };
+          
+          img.onerror = () => {
+            if (!mounted) return;
+            console.error('Error loading image from data URL');
+            setError(true);
+          };
+          
+          img.src = dataUrl;
+        } catch (err) {
+          if (!mounted) return;
+          console.error('Error creating preview:', err);
+          setError(true);
+        }
+      };
+      
+      loadPreview();
+      
+      return () => {
+        mounted = false;
+      };
+    }
   }, [file]);
 
   return (
     <PreviewContainer>
-      {!error ? (
+      {!error && preview ? (
         <PreviewImage 
           src={preview} 
           alt={name} 

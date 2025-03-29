@@ -5,77 +5,44 @@ import { fileToDataUrl } from '../../utils/helpers';
 // Style configuration
 const STYLES = {
   'gradient-blue': {
-    background: 'linear-gradient(135deg, #4285f4, #0F9D58)',
-    color: 'white',
-    overlayOpacity: 0.3
+    background: 'linear-gradient(135deg, #4285f4, #34a853)',
+    color: 'white'
   },
-  'dark': {
-    background: 'linear-gradient(135deg, #212121, #424242)',
-    color: 'white',
-    overlayOpacity: 0.5
+  'gradient-purple': {
+    background: 'linear-gradient(135deg, #673ab7, #e91e63)',
+    color: 'white'
   },
-  'vibrant': {
-    background: 'linear-gradient(135deg, #00c9ff, #92fe9d)',
-    color: '#333',
-    overlayOpacity: 0.2
+  'gradient-orange': {
+    background: 'linear-gradient(135deg, #ff5722, #ff9800)',
+    color: 'white'
   }
 };
 
 const PreviewWrapper = styled.div`
   width: 1400px;
   height: 560px;
-  background-image: ${props => props.$background || 'linear-gradient(135deg, #4285f4, #0F9D58)'};
+  background: ${props => props.$background || 'linear-gradient(135deg, #4285f4, #34a853)'};
   position: relative;
   overflow: hidden;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
   color: ${props => props.$color || 'white'};
-  transform-origin: top left;
-  transform: scale(0.35);
-  margin-bottom: -364px;
+  padding: 40px;
+  display: flex;
+  flex-direction: row;
   
   @media (max-width: 768px) {
-    transform: scale(0.25);
-    margin-bottom: -420px;
+    transform: scale(0.5);
+    transform-origin: top left;
+    margin-bottom: -280px;
   }
 `;
 
-const Overlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: ${props => 
-    props.$overlayOpacity ? 
-    `rgba(0, 0, 0, ${props.$overlayOpacity})` : 
-    'rgba(0, 0, 0, 0.3)'
-  };
-  display: flex;
-`;
-
-const Content = styled.div`
-  width: 50%;
-  padding: 60px;
+const ContentSection = styled.div`
+  width: 40%;
   display: flex;
   flex-direction: column;
   justify-content: center;
-`;
-
-const ExtensionName = styled.h2`
-  margin: 0 0 20px;
-  font-size: 54px;
-  font-weight: 700;
-  color: inherit;
-  line-height: 1.2;
-`;
-
-const ExtensionTagline = styled.p`
-  margin: 0 0 30px;
-  font-size: 24px;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 500px;
 `;
 
 const ExtensionIcon = styled.div`
@@ -89,45 +56,65 @@ const ExtensionIcon = styled.div`
   
   ${props => !props.$icon && `
     background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 16px;
+    border-radius: 20px;
   `}
 `;
 
-const ScreenshotsArea = styled.div`
-  width: 50%;
-  padding: 40px;
+const TextContent = styled.div`
+  max-width: 400px;
+`;
+
+const ExtensionName = styled.h2`
+  margin: 0 0 15px;
+  font-size: 36px;
+  font-weight: 700;
+  color: inherit;
+`;
+
+const ExtensionTagline = styled.p`
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.5;
+  opacity: 0.9;
+`;
+
+const ScreenshotsSection = styled.div`
+  width: 60%;
   display: flex;
   align-items: center;
-  justify-content: center;
-`;
-
-const ScreenshotFrame = styled.div`
-  background-color: white;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-  width: 600px;
-  height: 420px;
+  justify-content: flex-end;
   position: relative;
-  transform: perspective(1000px) rotateY(-10deg) rotateX(5deg);
 `;
 
-const Screenshot = styled.div`
-  width: 100%;
+const ScreenshotContainer = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   height: 100%;
-  background-image: ${props => props.$screenshot ? `url(${props.$screenshot})` : 'none'};
-  background-size: cover;
+  width: 100%;
+`;
+
+const ScreenshotImage = styled.div`
+  width: 320px;
+  height: 480px;
+  background-color: #f5f5f5;
+  background-image: ${props => props.$src ? `url(${props.$src})` : 'none'};
+  background-size: contain;
   background-position: center;
-  border-radius: 4px;
-  
-  ${props => !props.$screenshot && `
-    background-color: #f5f5f5;
-  `}
+  background-repeat: no-repeat;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  position: absolute;
+  transform: rotate(${props => props.$rotate || '0deg'});
+  top: ${props => props.$top || '0'};
+  right: ${props => props.$right || '0'};
+  z-index: ${props => props.$zIndex || 1};
 `;
 
 const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagline, style = 'gradient-blue' }, ref) => {
   const [iconUrl, setIconUrl] = useState(null);
-  const [screenshotUrl, setScreenshotUrl] = useState(null);
+  const [screenshotUrls, setScreenshotUrls] = useState([]);
   const styleConfig = STYLES[style] || STYLES['gradient-blue'];
   
   // Load icon data URL
@@ -154,24 +141,27 @@ const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagl
     };
   }, [icon]);
   
-  // Load screenshot data URL
+  // Load screenshot data URLs
   useEffect(() => {
     let mounted = true;
     
-    const loadScreenshot = async () => {
+    const loadScreenshots = async () => {
       if (!screenshots || screenshots.length === 0) return;
       
       try {
-        const dataUrl = await fileToDataUrl(screenshots[0]);
+        const urls = await Promise.all(
+          screenshots.slice(0, 3).map(screenshot => fileToDataUrl(screenshot))
+        );
+        
         if (mounted) {
-          setScreenshotUrl(dataUrl);
+          setScreenshotUrls(urls);
         }
       } catch (error) {
-        console.error('Error loading screenshot:', error);
+        console.error('Error loading screenshots:', error);
       }
     };
     
-    loadScreenshot();
+    loadScreenshots();
     
     return () => {
       mounted = false;
@@ -184,22 +174,54 @@ const MarqueePreview = forwardRef(({ icon, screenshots = [], extensionName, tagl
       $background={styleConfig.background}
       $color={styleConfig.color}
     >
-      <Overlay $overlayOpacity={styleConfig.overlayOpacity}>
-        <Content>
-          <ExtensionIcon $icon={iconUrl} />
+      <ContentSection>
+        <ExtensionIcon $icon={iconUrl} />
+        <TextContent>
           <ExtensionName>
             {extensionName || 'Your Extension Name'}
           </ExtensionName>
           <ExtensionTagline>
-            {tagline || 'A short description of what your extension does and why users would want to install it'}
+            {tagline || 'A short description of what your extension does and why users should install it'}
           </ExtensionTagline>
-        </Content>
-        <ScreenshotsArea>
-          <ScreenshotFrame>
-            <Screenshot $screenshot={screenshotUrl} />
-          </ScreenshotFrame>
-        </ScreenshotsArea>
-      </Overlay>
+        </TextContent>
+      </ContentSection>
+      
+      <ScreenshotsSection>
+        <ScreenshotContainer>
+          {screenshotUrls.length > 0 ? (
+            <>
+              {screenshotUrls.length >= 3 && (
+                <ScreenshotImage 
+                  $src={screenshotUrls[2]} 
+                  $rotate="-5deg" 
+                  $right="300px" 
+                  $top="20px"
+                  $zIndex={1}
+                />
+              )}
+              
+              {screenshotUrls.length >= 2 && (
+                <ScreenshotImage 
+                  $src={screenshotUrls[1]} 
+                  $rotate="3deg" 
+                  $right="200px"
+                  $top="10px"
+                  $zIndex={2}
+                />
+              )}
+              
+              <ScreenshotImage 
+                $src={screenshotUrls[0]} 
+                $rotate="0deg"
+                $right="100px"
+                $zIndex={3}
+              />
+            </>
+          ) : (
+            <ScreenshotImage />
+          )}
+        </ScreenshotContainer>
+      </ScreenshotsSection>
     </PreviewWrapper>
   );
 });
