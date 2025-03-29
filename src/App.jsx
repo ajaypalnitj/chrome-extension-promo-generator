@@ -246,6 +246,13 @@ function App() {
                   const previewSection = document.querySelector('.preview-section');
                   if (previewSection) {
                     previewSection.scrollIntoView({ behavior: 'smooth' });
+                    
+                    setTimeout(() => {
+                      const generateButton = previewSection.querySelector('button');
+                      if (generateButton && generateButton.textContent.includes('Generate')) {
+                        generateButton.click();
+                      }
+                    }, 500);
                   }
                 }}
               />
